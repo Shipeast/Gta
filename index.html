@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<title>Shipeast – GTA Online Dluhy</title>
+
+<style>
+@font-face {
+    font-family: "Pricedown";
+    src: url("pricedown.ttf");
+}
+
+body {
+    background: radial-gradient(circle at top, #1a1a1a, #000);
+    color: #eee;
+    font-family: Arial, sans-serif;
+    padding: 30px;
+}
+
+/* NADPIS */
+h1 {
+    font-family: "Pricedown", Impact, sans-serif;
+    font-size: 72px;
+    letter-spacing: 3px;
+    color: #ffd800; /* ŽLUTÁ */
+    text-shadow: 4px 4px 0 #000;
+    margin-bottom: 5px;
+}
+
+.subtitle {
+    color: #bbb;
+    margin-bottom: 30px;
+    font-size: 18px;
+}
+
+/* PANELY */
+.panel {
+    background: #0f0f0f;
+    border: 2px solid #333;
+    padding: 18px;
+    border-radius: 8px;
+    margin-bottom: 22px;
+}
+
+/* FORM + OVLÁDÁNÍ */
+input, select, button {
+    background: #1e1e1e;
+    color: #fff;
+    border: 2px solid #444;
+    padding: 10px 14px;
+    margin-right: 8px;
+    font-size: 16px;
+}
+
+button {
+    cursor: pointer;
+}
+button:hover {
+    background: #2a2a2a;
+}
+
+/* TABULKA */
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th {
+    text-align: left;
+    color: #ffd800; /* ŽLUTÁ */
+    border-bottom: 3px solid #444;
+    padding: 12px;
+    font-size: 20px;
+}
+
+td {
+    padding: 14px 12px;
+    font-size: 18px;
+}
+
+/* BARVY PODLE TYPU – STREAM KONTRAST */
+.heist  { background: rgba(255, 216, 0, 0.18); }
+.auto   { background: rgba(0, 140, 255, 0.20); }
+.deluxo { background: rgba(180, 80, 255, 0.22); }
+
+/* SMAZÁNÍ */
+.delete {
+    background: #900;
+    border: none;
+    color: #fff;
+    font-size: 16px;
+    padding: 8px 12px;
+}
+.delete:hover { background: #b00; }
+
+.footer {
+    margin-top: 20px;
+    color: #777;
+    font-size: 14px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Shipeast</h1>
+<div class="subtitle">GTA Online – dluhy (stream overlay)</div>
+
+<div class="panel">
+<form id="form">
+<input id="name" placeholder="Herní jméno" required>
+<select id="debt">
+<option>Heist</option>
+<option>Auto</option>
+<option>Deluxo</option>
+</select>
+<button>Přidat dluh</button>
+</form>
+</div>
+
+<div class="panel">
+<button onclick="exportTXT()">Stáhnout TXT</button>
+<input type="file" accept=".txt" onchange="importTXT(this)">
+</div>
+
+<div class="panel">
+Řazení:
+<select id="sortMode" onchange="render()">
+    <option value="none">Žádné</option>
+    <option value="type">Podle typu</option>
+    <option value="name">Podle jména</option>
+</select>
+</div>
+
+<div class="panel">
+<table>
+<thead>
+<tr>
+    <th>Hráč</th>
+    <th>Dluží</th>
+    <th></th>
+</tr>
+</thead>
+<tbody id="list"></tbody>
+</table>
+</div>
+
+<div class="footer">
+TXT formát: Nick | Heist / Auto / Deluxo
+</div>
+
+<script>
+const VALID = ["Heist","Auto","Deluxo"];
+const ORDER = { Heist:1, Auto:2, Deluxo:3 };
+
+let data = JSON.parse(localStorage.getItem("gta_dluhy")) || {};
+const list = document.getElementById("list");
+
+function render(){
+    list.innerHTML = "";
+    const mode = document.getElementById("sortMode").value;
+    let rows = [];
+
+    Object.keys(data).forEach(name => {
+        data[name].forEach((debt, i) => {
+            rows.push({ name, debt, i });
+        });
+    });
+
+    if (mode === "type") {
+        rows.sort((a,b) => ORDER[a.debt] - ORDER[b.debt]);
+    }
+
+    if (mode === "name") {
+        rows.sort((a,b) => a.name.localeCompare(b.name));
+    }
+
+    rows.forEach(r => {
+        list.innerHTML += `
+        <tr class="${r.debt.toLowerCase()}">
+            <td>${r.name}</td>
+            <td>${r.debt}</td>
+            <td>
+                <button class="delete" onclick="del('${r.name}',${r.i})">X</button>
+            </td>
+        </tr>`;
+    });
+
+    localStorage.setItem("gta_dluhy", JSON.stringify(data));
+}
+
+function del(name, i){
+    data[name].splice(i,1);
+    if (!data[name].length) delete data[name];
+    render();
+}
+
+form.onsubmit = e => {
+    e.preventDefault();
+    const n = name.value.trim();
+    const d = debt.value;
+    if (!VALID.includes(d)) return;
+    if (!data[n]) data[n] = [];
+    data[n].push(d);
+    e.target.reset();
+    render();
+};
+
+function exportTXT(){
+    let out = [];
+    Object.keys(data).forEach(n => {
+        data[n].forEach(d => out.push(`${n} | ${d}`));
+    });
+    const blob = new Blob([out.join("\n")], {type:"text/plain"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "gta_dluhy.txt";
+    a.click();
+}
+
+function importTXT(input){
+    const f = input.files[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = e => {
+        data = {};
+        e.target.result.split("\n").forEach(l => {
+            const [n,d] = l.split("|").map(x => x?.trim());
+            if (n && VALID.includes(d)) {
+                if (!data[n]) data[n] = [];
+                data[n].push(d);
+            }
+        });
+        render();
+    };
+    r.readAsText(f);
+}
+
+render();
+</script>
+
+</body>
+</html>
