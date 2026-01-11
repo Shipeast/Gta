@@ -7,7 +7,7 @@
 <style>
 @font-face {
     font-family: "Pricedown";
-    src: url("pricedown.ttf");
+    src: url("PricedownBl.otf") format("opentype");
 }
 
 body {
@@ -17,23 +17,20 @@ body {
     padding: 30px;
 }
 
-/* NADPIS */
 h1 {
     font-family: "Pricedown", Impact, sans-serif;
     font-size: 72px;
     letter-spacing: 3px;
-    color: #ffd800; /* ŽLUTÁ */
+    color: #ffd800;
     text-shadow: 4px 4px 0 #000;
-    margin-bottom: 5px;
+    margin-bottom: 10px;
 }
 
 .subtitle {
     color: #bbb;
-    margin-bottom: 30px;
-    font-size: 18px;
+    margin-bottom: 25px;
 }
 
-/* PANELY */
 .panel {
     background: #0f0f0f;
     border: 2px solid #333;
@@ -42,7 +39,6 @@ h1 {
     margin-bottom: 22px;
 }
 
-/* FORM + OVLÁDÁNÍ */
 input, select, button {
     background: #1e1e1e;
     color: #fff;
@@ -55,11 +51,8 @@ input, select, button {
 button {
     cursor: pointer;
 }
-button:hover {
-    background: #2a2a2a;
-}
+button:hover { background: #2a2a2a; }
 
-/* TABULKA */
 table {
     width: 100%;
     border-collapse: collapse;
@@ -67,7 +60,7 @@ table {
 
 th {
     text-align: left;
-    color: #ffd800; /* ŽLUTÁ */
+    color: #ffd800;
     border-bottom: 3px solid #444;
     padding: 12px;
     font-size: 20px;
@@ -78,12 +71,11 @@ td {
     font-size: 18px;
 }
 
-/* BARVY PODLE TYPU – STREAM KONTRAST */
+/* BARVY PODLE TYPU */
 .heist  { background: rgba(255, 216, 0, 0.18); }
 .auto   { background: rgba(0, 140, 255, 0.20); }
 .deluxo { background: rgba(180, 80, 255, 0.22); }
 
-/* SMAZÁNÍ */
 .delete {
     background: #900;
     border: none;
@@ -104,7 +96,7 @@ td {
 <body>
 
 <h1>Shipeast</h1>
-<div class="subtitle">GTA Online – dluhy (stream overlay)</div>
+<div class="subtitle">GTA Online – evidence dluhů</div>
 
 <div class="panel">
 <form id="form">
@@ -154,11 +146,16 @@ const VALID = ["Heist","Auto","Deluxo"];
 const ORDER = { Heist:1, Auto:2, Deluxo:3 };
 
 let data = JSON.parse(localStorage.getItem("gta_dluhy")) || {};
+
 const list = document.getElementById("list");
+const form = document.getElementById("form");
+const nameInput = document.getElementById("name");
+const debtSelect = document.getElementById("debt");
+const sortSelect = document.getElementById("sortMode");
 
 function render(){
     list.innerHTML = "";
-    const mode = document.getElementById("sortMode").value;
+    const mode = sortSelect.value;
     let rows = [];
 
     Object.keys(data).forEach(name => {
@@ -176,14 +173,15 @@ function render(){
     }
 
     rows.forEach(r => {
-        list.innerHTML += `
-        <tr class="${r.debt.toLowerCase()}">
+        const tr = document.createElement("tr");
+        tr.className = r.debt.toLowerCase();
+        tr.innerHTML = `
             <td>${r.name}</td>
             <td>${r.debt}</td>
-            <td>
-                <button class="delete" onclick="del('${r.name}',${r.i})">X</button>
-            </td>
-        </tr>`;
+            <td><button class="delete">X</button></td>
+        `;
+        tr.querySelector("button").onclick = () => del(r.name, r.i);
+        list.appendChild(tr);
     });
 
     localStorage.setItem("gta_dluhy", JSON.stringify(data));
@@ -195,16 +193,18 @@ function del(name, i){
     render();
 }
 
-form.onsubmit = e => {
+form.addEventListener("submit", e => {
     e.preventDefault();
-    const n = name.value.trim();
-    const d = debt.value;
-    if (!VALID.includes(d)) return;
+    const n = nameInput.value.trim();
+    const d = debtSelect.value;
+    if (!n || !VALID.includes(d)) return;
+
     if (!data[n]) data[n] = [];
     data[n].push(d);
-    e.target.reset();
+
+    form.reset();
     render();
-};
+});
 
 function exportTXT(){
     let out = [];
